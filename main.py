@@ -107,7 +107,7 @@ class Plotting(object):
     def __init__(self, graphs):
         self.graphs = graphs
         self.styles = ['solid', 'dashed']
-        self.colors = ppl.set2
+        self.colors = ppl.colors.set2
         self.stackplot()
         self.alluvial()
 
