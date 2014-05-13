@@ -332,7 +332,7 @@ m_end = 5'''
 #barabasi_albert(n, m_start, m_end, number_of_average)
 
 #erdoes_3d_plot(20)
-watt_strogatz_3d_plot(0.5, 20)
+watt_strogatz_3d_plot(1, 20)
 #random_graph_3d_plot(20)
 #random_nm_3d_plot(20)
 #random_nm_with_preferential_attachment_plot(20)
