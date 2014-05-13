@@ -1,4 +1,6 @@
 from __future__ import division, unicode_literals
+from pylab import *
+from mpl_toolkits.mplot3d import Axes3D
 
 import unittest
 import networkx as nx
@@ -15,6 +17,7 @@ def barabasi_albert_graph_directed(n, m):
 	if m < 1 or  m >=n:
 		raise nx.NetworkXError("Barabasi-Albert network must have m>=1 and m<n, m=%d,n=%d"%(m,n))
 	G = nx.DiGraph()
+
 	G.add_nodes_from(range(n))
 	G.name="barabasi_albert_graph(%s,%s)"%(n,m)
 	targets=list(range(n))
@@ -49,7 +52,40 @@ def watts_strogatz_graph_directed(n, k, p):
 	return G
 
 
+def create_random_nm_graph(n, m):
+	if(m >= n):
+		raise nx.NetworkXError("m>=n, choose smaller m")
+	G = nx.DiGraph()
+	G.add_nodes_from(range(n))
+	G.name="random_nm__graph(%s,%s)"%(n,m)
+	for i in range(0, n, 1):
+		for j in range(0, m, 1):
+			rand = random.randint(0, n-1)
+			while rand == i or G.has_edge(i, rand):
+				rand = random.randint(0, n-1)
+			G.add_edge(i, rand)
+	return G
 
+
+def create_random_nm_graph_with_preferential_attachment(n, m):
+	if(m >= n):
+		raise nx.NetworkXError("m>=n, choose smaller m")
+	G = nx.DiGraph()
+	G.add_nodes_from(range(n))
+	G.name="random_nm__graph_with_preferential_attachment(%s,%s)"%(n,m)
+	P = []
+	for i in range(0, n, 1):
+		P.append(i)
+	for j in range(0, m, 1):
+		for i in range(0, n, 1):
+			rand_p = random.randint(0, len(P)-1)
+			rand = P[rand_p]
+			while rand == i or G.has_edge(i, rand):
+				rand_p = random.randint(0, len(P)-1)
+				rand = P[rand_p]
+			G.add_edge(i, rand)
+			P.append(rand)
+	return G
 
 
 
@@ -128,25 +164,174 @@ def barabasi_albert(n, m_start, m_end, number_of_average):
 	plt.savefig('test.png')
 
 
+def erdoes_3d_plot(number_of_average):
+	N = np.arange(5, 105, 5)
+	X = N
+	P = arange(0, 0.2, 0.005)
+	Y = P
+	X, Y = np.meshgrid(X, Y)
+	Z = X/2
+
+	for i in range(len(N)):
+		n = N[i]
+		print n
+		p = 0
+		for j in range(len(P)):
+			if n > 50 and p > 0.1:
+				Z[j][i] = 100
+				continue
+			average = 0
+			for av in range(number_of_average):
+				G = nx.gnp_random_graph(n, p, None, 1)
+				graph = Graph(G)
+				graph.stats()
+				average = average + graph.bow_tie[1]
+			average = average / number_of_average
+			Z[j][i] = average
+			p = p + 0.01
+
+	plot_3d(X, Y, Z, '3d_erdoes.png', 'nodes', 'probability of edge creation', 'scc [%]')
+
+
+def random_graph_3d_plot(number_of_average):
+	N = np.arange(5, 55, 5)
+	X = N
+	M = np.arange(1, 101, 5)
+	Y = M
+	X, Y = np.meshgrid(X, Y)
+	Z = X/2
+
+	for i in range(len(N)):
+		n = N[i]
+		print n
+		for j in range(len(M)):
+			m = M[j]
+			average = 0
+			for av in range(number_of_average):
+				G = nx.gnm_random_graph(n, m, None, 1)
+				graph = Graph(G)
+				graph.stats()
+				average = average + graph.bow_tie[1]
+			average = average / number_of_average
+			Z[j][i] = average
+
+	plot_3d(X, Y, Z, '3d_random_graph.png', 'nodes', 'edges', 'scc [%]')
+
+
+def watt_strogatz_3d_plot(p, number_of_average):
+	N = np.arange(20, 120, 5)
+	K = np.arange(2, 6, 1)
+	X = N
+	Y = K
+	X, Y = np.meshgrid(X, Y)
+	Z = X/2
+
+	for i in range(len(N)):
+		n = N[i]
+		print n
+		for j in range(len(K)):
+			k = K[j]
+			average = 0
+			for av in range(number_of_average):
+				G = watts_strogatz_graph_directed(n, k, p)
+				graph = Graph(G)
+				graph.stats()
+				average = average + graph.bow_tie[1]
+			average = average / number_of_average
+			Z[j][i] = average
+	
+	plot_3d(X, Y, Z, '3d_watt_strognatz.png', 'nodes', 'number of outgoing edges per node', 'scc [%]')
+
+
+def random_nm_3d_plot(number_of_average):
+	N = np.arange(5, 105, 5)
+	M = np.arange(0, 10, 1)
+	X = N
+	Y = M
+	X, Y = np.meshgrid(X, Y)
+	Z = X/2
+
+	for i in range (len(N)):
+		n = N[i]
+		print n
+		for j in range(len(M)):
+			m = M[j]
+			if m >= n:
+				Z[j][i] = 100
+				continue
+			average = 0
+			for av in range(number_of_average):
+				G = create_random_nm_graph(n, m)
+				graph = Graph(G)
+				graph.stats()
+				average = average + graph.bow_tie[1]
+			average = average / number_of_average
+			Z[j][i] = average
+
+	plot_3d(X, Y, Z, '3d_random_nm.png', 'nodes', 'number of outgoing edges per node', 'scc [%]')
+	
+
+def random_nm_with_preferential_attachment_plot(number_of_average):
+	N = np.arange(5, 105, 5)
+	M = np.arange(0, 10, 1)
+	X = N
+	Y = M
+	X, Y = np.meshgrid(X, Y)
+	Z = X/2
+
+	for i in range (len(N)):
+		n = N[i]
+		print n
+		for j in range(len(M)):
+			m = M[j]
+			if m >= n:
+				Z[j][i] = 100
+				continue
+			average = 0
+			for av in range(number_of_average):
+				G = create_random_nm_graph_with_preferential_attachment(n, m) 
+				graph = Graph(G)
+				graph.stats()
+				average = average + graph.bow_tie[1]
+			average = average / number_of_average
+			Z[j][i] = average
+
+	plot_3d(X, Y, Z, '3d_random_nm_with_preferential_attachment.png', 'nodes', 'number of outgoing edges per node', 'scc [%]')
+
+
+def plot_3d(X, Y, Z, name, label_x, label_y, label_z):
+	fig = plt.figure()
+	ax = fig.gca(projection = '3d')
+
+	surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+	ax.set_zlim(0, 100)
+	fig.colorbar(surf, shrink=0.5, aspect=5)
+	ax.set_xlabel(label_x)
+	ax.set_ylabel(label_y)
+	ax.set_zlabel(label_z)
+	fig.savefig(name)
 
 
 print "start"
 
 #parameters
-n = 500
+'''n = 500
 p_start = 0
 p_end = 1
 p_step = 0.05
 number_of_average = 10
 k = 2
 m_start = 1
-m_end = 5
-
+m_end = 5'''
 #erdoes(n, p_start, p_end, p_step, number_of_average)
-watts_strogatz(n, k, p_start, p_end, p_step, number_of_average)
+#watts_strogatz(n, k, p_start, p_end, p_step, number_of_average)
 #barabasi_albert(n, m_start, m_end, number_of_average)
 
-print "stop"
+erdoes_3d_plot(20)
+#watt_strogatz_3d_plot(0.2, 20)
+#random_graph_3d_plot(20)
+#random_nm_3d_plot(20)
 
+#random_nm_with_preferential_attachment_plot(20)
 
-
+print "end"
