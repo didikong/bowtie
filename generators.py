@@ -17,7 +17,6 @@ def barabasi_albert_graph_directed(n, m):
 	if m < 1 or  m >=n:
 		raise nx.NetworkXError("Barabasi-Albert network must have m>=1 and m<n, m=%d,n=%d"%(m,n))
 	G = nx.DiGraph()
-
 	G.add_nodes_from(range(n))
 	G.name="barabasi_albert_graph(%s,%s)"%(n,m)
 	targets=list(range(n))
@@ -30,25 +29,29 @@ def barabasi_albert_graph_directed(n, m):
 
 
 def watts_strogatz_graph_directed(n, k, p):
-	if k>=n/2: 
+	if k>=n/2:
 		raise nx.NetworkXError("k>=n/2, choose smaller k or larger n")
 	G = nx.DiGraph()
+	G.add_nodes_from(range(n))
 	G.name="watts_strogatz_graph(%s,%s,%s)"%(n,k,p)
 	nodes = list(range(n))
-	for j in range(1, k // 2+1):
-		targets = nodes[j:] + nodes[0:j]
-		edges = zip(nodes, targets) + zip(targets, nodes)
+	for j in range(k):
+		i =  int(j/2)
+		targets = nodes[i+1:] + nodes[0:i+1]
+		if j%2 == 0:
+			edges = zip(nodes, targets)
+		else:
+			edges = zip(targets, nodes)
 		G.add_edges_from(edges)
-	for j in range(1, k // 2+1): # outer loop is neighbors
-		targets = nodes[j:] + nodes[0:j]
-		edges = zip(nodes, targets) + zip (targets, nodes)
-		for u,v in edges:
-			if random.random() < p:
-				w = u
-				while w == u or w == v: 
-					w = random.choice(nodes)
-				G.remove_edge(u,v)  
-				G.add_edge(u,w)
+	
+	edges = G.edges()
+	for u,v in edges:
+		if random.random() < p:
+			w = u
+			while w==u or G.has_edge(u,w):
+				w = random.choice(nodes)
+			G.remove_edge(u,v)
+			G.add_edge(u,w)
 	return G
 
 
@@ -73,9 +76,7 @@ def create_random_nm_graph_with_preferential_attachment(n, m):
 	G = nx.DiGraph()
 	G.add_nodes_from(range(n))
 	G.name="random_nm__graph_with_preferential_attachment(%s,%s)"%(n,m)
-	P = []
-	for i in range(0, n, 1):
-		P.append(i)
+	P = list(range(n))
 	for j in range(0, m, 1):
 		for i in range(0, n, 1):
 			rand_p = random.randint(0, len(P)-1)
@@ -219,8 +220,8 @@ def random_graph_3d_plot(number_of_average):
 
 
 def watt_strogatz_3d_plot(p, number_of_average):
-	N = np.arange(20, 120, 5)
-	K = np.arange(2, 6, 1)
+	N = np.arange(5, 105, 5)
+	K = np.arange(0, 10, 1)
 	X = N
 	Y = K
 	X, Y = np.meshgrid(X, Y)
@@ -231,6 +232,9 @@ def watt_strogatz_3d_plot(p, number_of_average):
 		print n
 		for j in range(len(K)):
 			k = K[j]
+			if k>=n/2:
+				Z[j][i] = 100
+				continue
 			average = 0
 			for av in range(number_of_average):
 				G = watts_strogatz_graph_directed(n, k, p)
@@ -327,11 +331,10 @@ m_end = 5'''
 #watts_strogatz(n, k, p_start, p_end, p_step, number_of_average)
 #barabasi_albert(n, m_start, m_end, number_of_average)
 
-erdoes_3d_plot(20)
-#watt_strogatz_3d_plot(0.2, 20)
+#erdoes_3d_plot(20)
+watt_strogatz_3d_plot(0.5, 20)
 #random_graph_3d_plot(20)
 #random_nm_3d_plot(20)
-
 #random_nm_with_preferential_attachment_plot(20)
 
 print "end"
