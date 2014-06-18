@@ -7,6 +7,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import math
 
 from main import Graph
 from main import Plotting
@@ -60,7 +61,7 @@ def create_random_nm_graph(n, m):
 		raise nx.NetworkXError("m>=n, choose smaller m")
 	G = nx.DiGraph()
 	G.add_nodes_from(range(n))
-	G.name="random_nm__graph(%s,%s)"%(n,m)
+	G.name="random_nm_graph(%s,%s)"%(n,m)
 	for i in range(0, n, 1):
 		for j in range(0, m, 1):
 			rand = random.randint(0, n-1)
@@ -75,7 +76,7 @@ def create_random_nm_graph_with_preferential_attachment(n, m):
 		raise nx.NetworkXError("m>=n, choose smaller m")
 	G = nx.DiGraph()
 	G.add_nodes_from(range(n))
-	G.name="random_nm__graph_with_preferential_attachment(%s,%s)"%(n,m)
+	G.name="random_nm_graph_with_preferential_attachment(%s,%s)"%(n,m)
 	P = list(range(n))
 	for j in range(0, m, 1):
 		for i in range(0, n, 1):
@@ -86,6 +87,68 @@ def create_random_nm_graph_with_preferential_attachment(n, m):
 				rand = P[rand_p]
 			G.add_edge(i, rand)
 			P.append(rand)
+	return G
+
+
+def create_stochastic_block_graph(n, m, p):
+	if m >= n:
+		raise nx.NetworkXError("m>=n, choose smaller m")
+	if p > 0.99 and m > (n-1)%10:
+		raise nx.NetworkXError("p>0.99 and m > (n-1)%10")
+	G = nx.DiGraph()
+	G.add_nodes_from(range(n))
+	G.name="stochastic_block_graph(%s,%s,%s)"%(n,m,p)
+	if n == 0:
+		return G
+
+	k = math.ceil(n/10)
+	classes = list()
+	nodes_in_classes = list()
+	nodes = list()
+	for i in range(0, n, 1):
+		classes.append(int(math.floor(i/10)))
+		if(i != 0 and i % 10 == 0):
+			nodes_in_classes.append(nodes)
+			nodes = list()
+		nodes.append(i)
+	nodes_in_classes.append(nodes)
+
+	for i in range(0, n, 1):
+		for j in range(0, m, 1):
+			rand_node = i
+			while rand_node == i or G.has_edge(i, rand_node):
+				if random.random()< p:
+					rand_node = random.choice(nodes_in_classes[classes[i]])
+				else:
+					if k < 2:
+						rand_node = random.choice(nodes_in_classes[classes[i]])
+					else:
+						rand_class = random.randint(0, k-1)
+						while(rand_class == classes[i]):
+							rand_class = random.randint(0, k-1)
+						rand_node = random.choice(nodes_in_classes[rand_class])
+			G.add_edge(i, rand_node)
+	return G
+
+
+def create_stochastic_block_graph_model2(n, p_self, p_other):
+	G = nx.DiGraph()
+	G.add_nodes_from(range(n))
+	G.name="stochastic_block_graph(%s,%s,%s)"%(n,p_self,p_other)
+	if n == 0:
+		return G
+
+	classes = list()
+	for i in range(0, n, 1):
+		classes.append(int(math.floor(i/10)))
+	
+	for i in range(0, n, 1):
+		for j in range(0, n, 1):
+			if i != j:
+				p = random.random()
+				if (classes[i] == classes[j] and p<p_self) or (classes[i] != classes[j] and p<p_other):
+					G.add_edge(i, j)
+
 	return G
 
 
@@ -164,6 +227,30 @@ def barabasi_albert(n, m_start, m_end, number_of_average):
 	plt.ylabel('percent')
 	plt.savefig('test.png')
 
+
+def stochastic_block_model2(number_of_average, p_self, p_other):
+	N = np.arange(5, 100, 5)
+	x = []
+	bow_tie = []
+	legend = ["inc", "scc", "outc", "in_tendril", "out_tendril", "tube", "other"]
+
+	for i in range(len(N)):
+		n = N[i]
+		average = np.array([0,0,0,0,0,0,0])
+		for av in range(number_of_average):
+			G = create_stochastic_block_graph_model2(n, p_self, p_other)
+			graph = Graph(G)
+			graph.stats()
+			average = average + graph.bow_tie
+		average = average / number_of_average
+		x.append(n)
+		bow_tie.append(average)
+	
+	plt.plot(x, bow_tie)
+	plt.legend(legend, loc="right", shadow=True)
+	plt.xlabel('nodes')
+	plt.ylabel('percent')
+	plt.savefig('stochastic_block_model2.png')
 
 def erdoes_3d_plot(number_of_average):
 	N = np.arange(5, 105, 5)
@@ -275,7 +362,7 @@ def random_nm_3d_plot(number_of_average):
 	plot_3d(X, Y, Z, '3d_random_nm.png', 'nodes', 'number of outgoing edges per node', 'scc [%]')
 	
 
-def random_nm_with_preferential_attachment_plot(number_of_average):
+def random_nm_with_preferential_attachment_3d_plot(number_of_average):
 	N = np.arange(5, 105, 5)
 	M = np.arange(0, 10, 1)
 	X = N
@@ -301,6 +388,58 @@ def random_nm_with_preferential_attachment_plot(number_of_average):
 			Z[j][i] = average
 
 	plot_3d(X, Y, Z, '3d_random_nm_with_preferential_attachment.png', 'nodes', 'number of outgoing edges per node', 'scc [%]')
+
+
+def stochastic_block_3d_plot(p, number_of_average):
+	N = np.arange(5, 105, 5)
+	M = np.arange(0, 10, 1)
+	X = N
+	Y = M
+	X, Y = np.meshgrid(N, M)
+	Z = X/2
+
+	for i in range(len(N)):
+		n = N[i]
+		print n
+		for j in range(len(M)):
+			m = M[j]
+			if m >= n:
+				Z[j][i] = 100
+				continue
+			average = 0
+			for av in range(number_of_average):
+				G = create_stochastic_block_graph(n, m, p)
+				graph = Graph(G)
+				graph.stats()
+				average = average + graph.bow_tie[1]
+			average = average / number_of_average
+			Z[j][i] = average
+
+	plot_3d(X, Y, Z, '3d_stochastic_block.png', 'nodes', 'number of edges per node', 'scc [%]')
+
+
+def stochastic_block_model2_3d_plot(n, number_of_average):
+	P_self = arange(0, 0.5, 0.05)
+	P_other = arange(0, 0.1, 0.01)
+	X, Y = np.meshgrid(P_self, P_other)
+	Z = X/2
+
+	for i in range(len(P_self)):
+		p1 = P_self[i]
+		print p1
+		for j in range(len(P_other)):
+			p2 = P_other[j]
+			print p2
+			average = 0
+			for av in range(number_of_average):
+				G = create_stochastic_block_graph_model2(n, p1, p2)
+				graph = Graph(G)
+				graph.stats()
+				average = average + graph.bow_tie[1]
+			average = average / number_of_average
+			Z[j][i] = average
+
+	plot_3d(X, Y, Z, '3d_stochastic_block.png', 'probability of edge with same class', 'probability of edge with other class', 'scc [%]')
 
 
 def plot_3d(X, Y, Z, name, label_x, label_y, label_z):
@@ -332,9 +471,20 @@ m_end = 5'''
 #barabasi_albert(n, m_start, m_end, number_of_average)
 
 #erdoes_3d_plot(20)
-watt_strogatz_3d_plot(1, 20)
+#watt_strogatz_3d_plot(1, 20)
 #random_graph_3d_plot(20)
 #random_nm_3d_plot(20)
-#random_nm_with_preferential_attachment_plot(20)
+#random_nm_with_preferential_attachment_3d_plot(20)
+#stochastic_block_3d_plot(0.97, 20)
+#stochastic_block_model2_3d_plot(100, 20)
 
+
+stochastic_block_model2(100, 0.15, 0.02)
+
+
+'''
+G = create_stochastic_block_graph_model2(35, 0.6, 0.01)
+nx.draw(G)
+plt.savefig("test.png")
+'''
 print "end"
