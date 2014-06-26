@@ -2,6 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from main import Graph
 from main import GraphCollection
+from main import Plotting
 import string
 from bow_tie import BowTie
 
@@ -24,40 +25,34 @@ def readPageDetails(filename):
 	txtfile.close()
 	return lookup
 
-def readPageLinks(filename, lookup):
+def readPageLinks(filename, outname, lookup):
 	txtfile = open(filename, 'r')
-	G = nx.DiGraph()
+	outfile = open(outname, 'w')
+	i = 0
 	for line in txtfile:
 		if line.startswith("INSERT") == 1:
 			line = line[32:]
 			data = line.split("),(")
 			for insert_line in data:
 				insert = insert_line.split(',')
+				if len(insert) < 3:
+					i = i + 1
+					continue
 				if insert[1] == '0':
 					try:
 						page_id = lookup[hash(insert[2])]
-						G.add_edge(insert[0], page_id)
+						outfile.write(insert[0] + "\t" + page_id + "\n")
 					except:
 						None
+	print i
 	txtfile.close()
-	return G
+	outfile.close()
 
 
 print "start"
-language = "mn"
-index = [1, 5, 10, 15]
-gc = GraphCollection(language)
-for i in index:
-	lookup = readPageDetails("wiki_source/" + language + "/" + language +"wiki-" + str(i) + "-page.sql")
-	print "Details read"
-	G = readPageLinks("wiki_source/" + language + "/" + language +"wiki-" + str(i) + "-pagelinks.sql", lookup)
-	print "Graph constructed"
-	graph = BowTie(G)
-	gc.append(graph)
+language = "en"
+i = 2006
+lookup = readPageDetails("wiki_source/" + language + "/" + language +"wiki-" + str(i) + "-page.sql")
+print "Details read"
+readPageLinks("wiki_source/" + language + "/" + language +"wiki-" + str(i) + "-pagelinks.sql", "wiki_source/" + language + "/" + language + "-" + str(i) + ".txt", lookup)
 
-graphs = []
-graphs.append(gc)
-for g in graphs:
-	print "calculate..."
-	g.compute()
-P = Plotting(graphs)

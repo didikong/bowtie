@@ -173,7 +173,9 @@ class BowTie(nx.DiGraph):
 		if prev_bow_tie_dict:
 			self.bow_tie_changes = np.zeros((len(c2a), len(c2a)))
 			for n in self:
-				if n >= len(prev_bow_tie_dict):
+				try:
 					self.bow_tie_changes[prev_bow_tie_dict[n],
 							self.bow_tie_dict[n]] += 1
+				except:
+					None
 			self.bow_tie_changes /= len(self)
