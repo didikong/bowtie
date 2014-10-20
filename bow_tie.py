@@ -1,51 +1,29 @@
-import networkx as nx
-import numpy as np
-import matplotlib.pyplot as plt
 import random
-import time
-from main import Graph
+import numpy as np
 
-class BowTie(nx.DiGraph):
+class BowTie():
 
-	def get_edges(self):
-		edges = self.in_edges()
-		number = 0
-		u = list()
-		v = list()
-		in_list = list()
-		for edge in edges:
-			if number == edge[1]:
-				in_list.append(edge[0])
-			else:
-				if in_list:
-					u.append(number)
-					v.append(in_list)
-				number = edge[1]
-				in_list = list()
-				in_list.append(edge[0])
-		u.append(number)
-		v.append(in_list)
-		self.in_edg = dict(zip(u,v))
+	def set_edges(self, from_node, to_node):
+		in_set = set()
+		out_set = set()
 
-		edges = self.out_edges()
-		number = 0
-		u = list()
-		v = list()
-		out_list = list()
-		for edge in edges:
-			if number == edge[0]:
-				out_list.append(edge[1])
-			else:
-				if out_list:
-					u.append(number)
-					v.append(out_list)
-				number = edge[0]
-				out_list = list()
-				out_list.append(edge[1])
-		u.append(number)
-		v.append(out_list)
-		self.out_edg = dict(zip(u,v))
+		try:
+			in_set = self.in_edg[to_node]
+			in_set.add(from_node)
+		except:
+			in_set.add(from_node)
+		self.in_edg[to_node] = in_set
 
+		try:
+			out_set = self.out_edg[from_node]
+			out_set.add(to_node)
+		except:
+			out_set.add(to_node)
+		self.out_edg[from_node] = out_set
+
+
+	def set_nodes(self, all_nodes):
+		self.all_nodes = all_nodes
 
 	def search(self, start_node, node_set, direction = 0):
 		result = set()
@@ -78,18 +56,17 @@ class BowTie(nx.DiGraph):
 		out_tendrils = set()
 		tubes = set()
 		other = set()
-		all_nodes = self.nodes()
-		unknown = set(all_nodes).difference(self.scc).difference(self.in_scc).difference(self.out_scc)
+		unknown = self.all_nodes.difference(self.scc).difference(self.in_scc).difference(self.out_scc)
 		for node in unknown:
 			bool_in = 0
 			bool_out = 0
-			incoming = self.search(node, all_nodes, 0)
+			incoming = self.search(node, self.all_nodes, 0)
 			if len(incoming) > 1:
 				for in_node in incoming:
 					if in_node in self.in_scc:
 						bool_in = 1
 		
-			outgoing = self.search(node, all_nodes, 1)
+			outgoing = self.search(node, self.all_nodes, 1)
 			if len(outgoing) > 1:
 				for out_node in outgoing:
 					if out_node in self.out_scc:
@@ -109,14 +86,14 @@ class BowTie(nx.DiGraph):
 			self.out_tendrils = out_tendrils
 			self.tubes = tubes
 			self.other = other
-		return [100.*len(in_tendrils)/len(all_nodes), 100.*len(out_tendrils)/len(all_nodes), 100.*len(tubes)/len(all_nodes) , 100.*len(other)/len(all_nodes)]
+		return [100.*len(in_tendrils)/len(self.all_nodes), 100.*len(out_tendrils)/len(self.all_nodes), 100.*len(tubes)/len(self.all_nodes) , 100.*len(other)/len(self.all_nodes)]
 
 
 	def getData(self):
 		scc = set()
-		number_of_nodes = self.number_of_nodes()
-		set_of_nodes = set(self.nodes())
+		number_of_nodes = len(self.all_nodes)
 		len_scc = 0
+		set_of_nodes = self.all_nodes
 
 		while len(set_of_nodes) > len_scc:
 			print len(set_of_nodes)
@@ -130,10 +107,10 @@ class BowTie(nx.DiGraph):
 			set_of_nodes = set_of_nodes.difference(group)
 
 		rand_node = random.sample(scc, 1)[0]
-		in_scc = self.search(rand_node, set(self.nodes()), 0)
+		in_scc = self.search(rand_node, self.all_nodes, 0)
 		in_scc = in_scc.difference(scc)
 		len_in = len(in_scc)
-		out_scc = self.search(rand_node, set(self.nodes()), 1)
+		out_scc = self.search(rand_node, self.all_nodes, 1)
 		out_scc = out_scc.difference(scc)
 		len_out = len(out_scc)
 
@@ -147,20 +124,15 @@ class BowTie(nx.DiGraph):
 
 
 
-	def __init__(self, graph=None):
-		super(BowTie, self).__init__()
+	def __init__(self):
 		self.lc_asp, self.lc_diam = 0, 0
 		self.bow_tie, self.bow_tie_dict, self.bow_tie_changes = 0, 0, []
-		self.in_edg, self.out_edg  = [], []
+		self.in_edg, self.out_edg, self.all_nodes  = dict(), dict(), set()
 		self.in_scc, self.scc, self.out_scc, self.in_tendrils = set(), set(), set(), set()
 		self.out_tendrils, self.tubes, self.other = set(), set(), set()
-		if graph:
-			self.add_nodes_from(graph)
-			self.add_edges_from(graph.edges())
-		self.G = graph
 	
 	def stats(self, prev_bow_tie_dict=None):
-		self.get_edges()
+		#self.get_edges()
 		self.bow_tie = self.getData()
 		zipped = zip(['inc', 'scc', 'outc', 'in_tendril', 'out_tendril',
 			'tube', 'other'], range(7))
@@ -172,10 +144,10 @@ class BowTie(nx.DiGraph):
 				self.bow_tie_dict[n] = i
 		if prev_bow_tie_dict:
 			self.bow_tie_changes = np.zeros((len(c2a), len(c2a)))
-			for n in self:
+			for n in self.all_nodes:
 				try:
 					self.bow_tie_changes[prev_bow_tie_dict[n],
 							self.bow_tie_dict[n]] += 1
 				except:
 					None
-			self.bow_tie_changes /= len(self)
+			self.bow_tie_changes /= len(self.all_nodes)
